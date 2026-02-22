@@ -9,7 +9,8 @@ DrumStory is a vanilla JavaScript, mobile-first PWA for drummers to track their 
 ## Core Tech Stack
 - **Frontend:** Vanilla HTML, CSS (`style.css`), JavaScript (`main.js` as an ES Module).
 - **Bundler:** Vite (`npm run dev`, `npm run build`).
-- **Data Persistence:** Browser `localStorage` via `store.js`.
+- **Database:** Firebase Cloud Firestore (`store.js`).
+- **Authentication:** Firebase Auth (Google Sign-In via `firebase.js`).
 - **API:** iTunes Search API (for querying song metadata).
 - **PWA:** Managed via `manifest.json` and `sw.js` (service worker caching).
 
@@ -24,10 +25,12 @@ Acts as the controller. It manages:
 - **Rendering:** Dynamically generates HTML Strings for `createItemCard()` depending on the tab context.
 - **Events:** Handles tab switching, iTunes autocomplete dropdown fetching, inline Checkbox/List updates for Notes and Struggles.
 
-**3. `store.js`**
-The database abstraction layer.
-- `drumofir_songs`: Array of JSON objects for songs `{id, title, artist, difficulty, progress, notes, completedNotes, struggles, completedStruggles}`.
-- `drumofir_skills`: Parallel Array for skills `{id, title, difficulty, progress, notes, completedNotes, struggles, completedStruggles}`.
+**3. `firebase.js` & `store.js`**
+The database and authentication layer.
+- **Auth:** Listens to Google sign-in states and controls access.
+- **Firestore Schema:**
+  - `users/{uid}/songs/{uuid}`: Documents for songs `{title, artist, difficulty, progress, notes, completedNotes, struggles, completedStruggles}`.
+  - `users/{uid}/skills/{uuid}`: Parallel collection for skills `{title, difficulty, progress, notes, completedNotes, struggles, completedStruggles}`.
 
 ## Maintaining the App
 

@@ -38,7 +38,10 @@
         <h1>🥁 DrumStory</h1>
         <p>Drum Mastery Tracker</p>
       </div>
-      <button id="add-btn" class="btn primary-btn">+ Add Song</button>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <button id="logout-btn" class="btn secondary-btn hidden" style="padding: 0.5rem;">Logout</button>
+        <button id="add-btn" class="btn primary-btn">+ Add Song</button>
+      </div>
     </header>
 
     <div class="tabs">
@@ -108,6 +111,17 @@
           <button type="submit" class="btn primary-btn" id="save-btn">Save Song</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Login Overlay -->
+  <div id="login-overlay" class="login-overlay">
+    <div class="login-content glass-panel">
+      <h2>🥁 DrumStory</h2>
+      <p style="margin-top: 0.5rem; color: var(--text-secondary);">Sign in to sync your progress across all devices.</p>
+      <button id="login-btn" class="btn primary-btn" style="margin-top: 1.5rem; width: 100%;">
+        Login with Google
+      </button>
     </div>
   </div>
 

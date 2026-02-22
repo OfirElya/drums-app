@@ -1,6 +1,12 @@
 import { store } from './store.js';
+import { auth, provider } from './firebase.js';
+import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // DOM Elements
+const loginOverlay = document.getElementById('login-overlay');
+const loginBtn = document.getElementById('login-btn');
+const logoutBtn = document.getElementById('logout-btn');
+
 const itemsGrid = document.getElementById('items-grid');
 const addBtn = document.getElementById('add-btn');
 const itemModal = document.getElementById('item-modal');
@@ -29,23 +35,48 @@ let searchTimeout;
 
 // Current State
 let activeTab = 'songs'; // 'songs' or 'skills'
-let currentItems = [];
+let activeData = []; // Pure un-filtered data array from Firebase (either songs or skills)
+let currentItems = []; // The visually filtered/sorted array
 
-// Initialize Application
-function init() {
-  loadItemsFromStore();
-  renderItems();
-  setupEventListeners();
-}
+// Auth Listeners
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    loginOverlay.classList.add('hidden');
+    logoutBtn.classList.remove('hidden');
+    store.setUserId(user.uid);
+    await fetchData();
+  } else {
+    loginOverlay.classList.remove('hidden');
+    logoutBtn.classList.add('hidden');
+    store.setUserId(null);
+    activeData = [];
+    currentItems = [];
+    renderItems();
+  }
+});
 
-function loadItemsFromStore() {
-  currentItems = activeTab === 'songs' ? store.getSongs() : store.getSkills();
+loginBtn.addEventListener('click', async () => {
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (error) {
+    console.error("Login failed", error);
+    alert("Failed to login with Google.");
+  }
+});
+
+logoutBtn.addEventListener('click', async () => {
+  await signOut(auth);
+});
+
+async function fetchData() {
+  activeData = activeTab === 'songs' ? await store.getSongs() : await store.getSkills();
+  updateView();
 }
 
 function setupEventListeners() {
   // Tabs
   tabBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       tabBtns.forEach(b => b.classList.remove('active'));
       e.target.classList.add('active');
       activeTab = e.target.dataset.tab;
@@ -55,8 +86,7 @@ function setupEventListeners() {
       searchInput.placeholder = activeTab === 'songs' ? 'Search songs...' : 'Search skills...';
 
       closeModal();
-      loadItemsFromStore();
-      updateView();
+      await fetchData();
     });
   });
 
@@ -145,20 +175,19 @@ function renderItems() {
   document.querySelectorAll('.edit-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.dataset.id;
-      const item = activeTab === 'songs' ? store.getSong(id) : store.getSkill(id);
+      const item = activeData.find(i => i.id === id);
       if (item) openModal(item);
     });
   });
 
   document.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       if (confirm(`Are you sure you want to delete this ${activeTab === 'songs' ? 'song' : 'skill'}?`)) {
         const id = e.currentTarget.dataset.id;
-        if (activeTab === 'songs') store.deleteSong(id);
-        else store.deleteSkill(id);
+        if (activeTab === 'songs') await store.deleteSong(id);
+        else await store.deleteSkill(id);
 
-        loadItemsFromStore();
-        updateView();
+        await fetchData();
       }
     });
   });
@@ -173,27 +202,28 @@ function renderItems() {
       e.target.style.setProperty('--progress', `${val}%`);
     });
 
-    slider.addEventListener('change', (e) => {
+    slider.addEventListener('change', async (e) => {
       const id = e.target.dataset.id;
       const val = parseInt(e.target.value);
       // Persist on release
-      if (activeTab === 'songs') store.updateSong(id, { progress: val });
-      else store.updateSkill(id, { progress: val });
+      if (activeTab === 'songs') await store.updateSong(id, { progress: val });
+      else await store.updateSkill(id, { progress: val });
 
-      loadItemsFromStore();
-      updateView();
+      await fetchData();
     });
   });
 
   // Note/Struggle Checkbox events
   document.querySelectorAll('.struggle-item').forEach(item => {
-    item.addEventListener('click', (e) => {
+    item.addEventListener('click', async (e) => {
       const li = e.currentTarget;
       const itemId = li.dataset.itemId;
       const type = li.dataset.type; // 'notes' or 'struggles'
       const index = parseInt(li.dataset.index);
 
-      const itemData = activeTab === 'songs' ? store.getSong(itemId) : store.getSkill(itemId);
+      const itemData = activeData.find(i => i.id === itemId);
+      if (!itemData) return;
+
       const completionKey = type === 'notes' ? 'completedNotes' : 'completedStruggles';
       let completed = itemData[completionKey] || [];
 
@@ -205,47 +235,51 @@ function renderItems() {
         li.classList.add('completed');
       }
 
-      if (activeTab === 'songs') store.updateSong(itemId, { [completionKey]: completed });
-      else store.updateSkill(itemId, { [completionKey]: completed });
+      if (activeTab === 'songs') await store.updateSong(itemId, { [completionKey]: completed });
+      else await store.updateSkill(itemId, { [completionKey]: completed });
+
+      await fetchData(); // Refresh local array fully to sync state
     });
   });
 
   // Inline Add events
   document.querySelectorAll('.inline-add-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       const id = e.currentTarget.dataset.id;
       const type = e.currentTarget.dataset.type;
-      handleInlineAdd(id, type);
+      await handleInlineAdd(id, type);
     });
   });
 
   document.querySelectorAll('.inline-struggle-input').forEach(input => {
-    input.addEventListener('keypress', (e) => {
+    input.addEventListener('keypress', async (e) => {
       if (e.key === 'Enter') {
         const idStr = e.currentTarget.id; // inline-notes-123 or inline-struggles-123
         const isNotes = idStr.includes('inline-notes-');
         const id = idStr.replace(isNotes ? 'inline-notes-' : 'inline-struggles-', '');
-        handleInlineAdd(id, isNotes ? 'notes' : 'struggles');
+        await handleInlineAdd(id, isNotes ? 'notes' : 'struggles');
       }
     });
   });
 }
 
-function handleInlineAdd(itemId, type) {
+async function handleInlineAdd(itemId, type) {
   const inputId = type === 'notes' ? `inline-notes-${itemId}` : `inline-struggles-${itemId}`;
   const inputEl = document.getElementById(inputId);
+  if (!inputEl) return;
   const newItem = inputEl.value.trim();
   if (!newItem) return;
 
-  const itemData = activeTab === 'songs' ? store.getSong(itemId) : store.getSkill(itemId);
+  const itemData = activeData.find(i => i.id === itemId);
+  if (!itemData) return;
+
   const existingList = itemData[type] ? itemData[type].split('\n').filter(s => s.trim() !== '') : [];
   existingList.push(newItem);
 
-  if (activeTab === 'songs') store.updateSong(itemId, { [type]: existingList.join('\n') });
-  else store.updateSkill(itemId, { [type]: existingList.join('\n') });
+  if (activeTab === 'songs') await store.updateSong(itemId, { [type]: existingList.join('\n') });
+  else await store.updateSkill(itemId, { [type]: existingList.join('\n') });
 
-  loadItemsFromStore();
-  renderItems();
+  await fetchData();
 }
 
 function createItemCard(item) {
@@ -360,7 +394,7 @@ function openModal(item = null) {
     artistInput.readOnly = true;
     titleInput.placeholder = 'Select from search above...';
     artistInput.placeholder = 'Select from search above...';
-    saveBtn.textContent = item ? 'Save Song' : 'Save Song'; // Even updating it says save song, but I'll make it generic 
+    saveBtn.textContent = item ? 'Update Song' : 'Save Song';
   } else {
     // Skills Mode
     itunesSearchContainer.style.display = 'none';
@@ -370,12 +404,11 @@ function openModal(item = null) {
     titleInput.readOnly = false;
     artistInput.readOnly = false;
     titleInput.placeholder = 'e.g. Double Kick Paradiddle';
-    saveBtn.textContent = 'Save Skill';
+    saveBtn.textContent = item ? 'Update Skill' : 'Save Skill';
   }
 
-  if (item) {
+  if (item && item.id) { // Editing existing
     modalTitle.textContent = isSong ? 'Edit Song' : 'Edit Skill';
-    saveBtn.textContent = isSong ? 'Update Song' : 'Update Skill';
     idInput.value = item.id;
     titleInput.value = item.title;
     artistInput.value = item.artist || '';
@@ -386,7 +419,6 @@ function openModal(item = null) {
     artistInput.readOnly = false; 
   } else {
     modalTitle.textContent = isSong ? 'Add New Song' : 'Add New Skill';
-    saveBtn.textContent = isSong ? 'Save Song' : 'Save Skill';
     itemForm.reset();
     idInput.value = '';
     titleInput.value = '';
@@ -404,7 +436,7 @@ function closeModal() {
   itunesResults.classList.add('hidden');
 }
 
-function handleFormSubmit(e) {
+async function handleFormSubmit(e) {
   e.preventDefault();
 
   const formData = {
@@ -420,17 +452,16 @@ function handleFormSubmit(e) {
   const id = idInput.value;
 
   if (activeTab === 'songs') {
-    if (id) store.updateSong(id, formData);
-    else store.addSong(formData);
+    if (id) await store.updateSong(id, formData);
+    else await store.addSong(formData);
   } else {
     // Skills
-    if (id) store.updateSkill(id, formData);
-    else store.addSkill(formData);
+    if (id) await store.updateSkill(id, formData);
+    else await store.addSkill(formData);
   }
 
-  loadItemsFromStore();
-  updateView();
   closeModal();
+  await fetchData();
 }
 
 // Search & Sort Logic
@@ -441,13 +472,13 @@ function updateView() {
   // 1. Filter
   let filtered = [];
   if (activeTab === 'songs') {
-    filtered = store.getSongs().filter(song =>
-      song.title.toLowerCase().includes(searchTerm) ||
-      song.artist.toLowerCase().includes(searchTerm)
+    filtered = activeData.filter(song =>
+      (song.title && song.title.toLowerCase().includes(searchTerm)) ||
+      (song.artist && song.artist.toLowerCase().includes(searchTerm))
     );
   } else {
-    filtered = store.getSkills().filter(skill =>
-      skill.title.toLowerCase().includes(searchTerm)
+    filtered = activeData.filter(skill =>
+      skill.title && skill.title.toLowerCase().includes(searchTerm)
     );
   }
 
@@ -465,7 +496,7 @@ function updateView() {
       case 'difficulty-asc':
         return a.difficulty - b.difficulty;
       case 'title':
-        return a.title.localeCompare(b.title);
+        return (a.title || '').localeCompare(b.title || '');
       default:
         return 0;
     }
@@ -478,6 +509,7 @@ function updateView() {
 // Utility
 function escapeHtml(unsafe) {
   if (!unsafe) return '';
+  if (typeof unsafe !== 'string') return unsafe;
   return unsafe
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -486,5 +518,5 @@ function escapeHtml(unsafe) {
     .replace(/'/g, "&#039;");
 }
 
-// Boot application
-init();
+// Boot event listeners (actual data fetch waits for auth)
+setupEventListeners();

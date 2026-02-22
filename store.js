@@ -1,91 +1,60 @@
-// Data Management Layer
-const STORAGE_KEY_SONGS = 'drumofir_songs';
-const STORAGE_KEY_SKILLS = 'drumofir_skills';
+import { db } from './firebase.js';
+import { collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, getDoc, updateDoc } from 'firebase/firestore';
 
 export const store = {
-  // --- SONGS ---
-  getSongs: () => {
-    const data = localStorage.getItem(STORAGE_KEY_SONGS);
-    return data ? JSON.parse(data) : [];
+  uid: null, // Set by main.js auth state listener
+
+  setUserId(uid) {
+    this.uid = uid;
   },
 
-  saveSongs: (songs) => {
-    localStorage.setItem(STORAGE_KEY_SONGS, JSON.stringify(songs));
+  async getItems(type) {
+    if (!this.uid) return [];
+    const q = query(collection(db, 'users', this.uid, type), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   },
 
-  getSong: (id) => {
-    const songs = store.getSongs();
-    return songs.find(s => s.id === id);
+  async getSongs() { return this.getItems('songs'); },
+  async getSkills() { return this.getItems('skills'); },
+
+  async getItem(type, id) {
+    if (!this.uid) return null;
+    const docRef = doc(db, 'users', this.uid, type, id);
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
   },
 
-  addSong: (song) => {
-    const songs = store.getSongs();
-    const newSong = {
-      ...song,
-      id: Date.now().toString(),
+  async getSong(id) { return this.getItem('songs', id); },
+  async getSkill(id) { return this.getItem('skills', id); },
+
+  async addItem(type, itemData) {
+    if (!this.uid) return;
+    const newId = crypto.randomUUID();
+    const item = {
+      ...itemData,
       createdAt: new Date().toISOString()
     };
-    songs.push(newSong);
-    store.saveSongs(songs);
-    return newSong;
+    await setDoc(doc(db, 'users', this.uid, type, newId), item);
   },
 
-  updateSong: (id, updates) => {
-    const songs = store.getSongs();
-    const index = songs.findIndex(s => s.id === id);
-    if (index !== -1) {
-      songs[index] = { ...songs[index], ...updates };
-      store.saveSongs(songs);
-      return songs[index];
-    }
+  async addSong(song) { return this.addItem('songs', song); },
+  async addSkill(skill) { return this.addItem('skills', skill); },
+
+  async updateItem(type, id, updates) {
+    if (!this.uid) return;
+    const docRef = doc(db, 'users', this.uid, type, id);
+    await updateDoc(docRef, updates);
   },
 
-  deleteSong: (id) => {
-    const songs = store.getSongs();
-    const filtered = songs.filter(s => s.id !== id);
-    store.saveSongs(filtered);
+  async updateSong(id, updates) { return this.updateItem('songs', id, updates); },
+  async updateSkill(id, updates) { return this.updateItem('skills', id, updates); },
+
+  async deleteItem(type, id) {
+    if (!this.uid) return;
+    await deleteDoc(doc(db, 'users', this.uid, type, id));
   },
 
-  // --- SKILLS ---
-  getSkills: () => {
-    const data = localStorage.getItem(STORAGE_KEY_SKILLS);
-    return data ? JSON.parse(data) : [];
-  },
-
-  saveSkills: (skills) => {
-    localStorage.setItem(STORAGE_KEY_SKILLS, JSON.stringify(skills));
-  },
-
-  getSkill: (id) => {
-    const skills = store.getSkills();
-    return skills.find(s => s.id === id);
-  },
-
-  addSkill: (skill) => {
-    const skills = store.getSkills();
-    const newSkill = {
-      ...skill,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString()
-    };
-    skills.push(newSkill);
-    store.saveSkills(skills);
-    return newSkill;
-  },
-
-  updateSkill: (id, updates) => {
-    const skills = store.getSkills();
-    const index = skills.findIndex(s => s.id === id);
-    if (index !== -1) {
-      skills[index] = { ...skills[index], ...updates };
-      store.saveSkills(skills);
-      return skills[index];
-    }
-  },
-
-  deleteSkill: (id) => {
-    const skills = store.getSkills();
-    const filtered = skills.filter(s => s.id !== id);
-    store.saveSkills(filtered);
-  }
+  async deleteSong(id) { return this.deleteItem('songs', id); },
+  async deleteSkill(id) { return this.deleteItem('skills', id); }
 };
