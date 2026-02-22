@@ -1,66 +1,91 @@
-const STORAGE_KEY = 'drum_tracker_songs';
+// Data Management Layer
+const STORAGE_KEY_SONGS = 'drumofir_songs';
+const STORAGE_KEY_SKILLS = 'drumofir_skills';
 
 export const store = {
-  // Load songs from localStorage
-  getSongs() {
-    try {
-      const data = localStorage.getItem(STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      console.error('Failed to load songs from localStorage:', e);
-      return [];
-    }
+  // --- SONGS ---
+  getSongs: () => {
+    const data = localStorage.getItem(STORAGE_KEY_SONGS);
+    return data ? JSON.parse(data) : [];
   },
 
-  // Save songs array to localStorage
-  saveSongs(songs) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(songs));
-      return true;
-    } catch (e) {
-      console.error('Failed to save songs to localStorage:', e);
-      return false;
-    }
+  saveSongs: (songs) => {
+    localStorage.setItem(STORAGE_KEY_SONGS, JSON.stringify(songs));
   },
 
-  // Add a new song
-  addSong(songData) {
-    const songs = this.getSongs();
+  getSong: (id) => {
+    const songs = store.getSongs();
+    return songs.find(s => s.id === id);
+  },
+
+  addSong: (song) => {
+    const songs = store.getSongs();
     const newSong = {
-      ...songData,
-      id: crypto.randomUUID(),
+      ...song,
+      id: Date.now().toString(),
       createdAt: new Date().toISOString()
     };
     songs.push(newSong);
-    this.saveSongs(songs);
+    store.saveSongs(songs);
     return newSong;
   },
 
-  // Update an existing song
-  updateSong(id, updateData) {
-    const songs = this.getSongs();
+  updateSong: (id, updates) => {
+    const songs = store.getSongs();
     const index = songs.findIndex(s => s.id === id);
     if (index !== -1) {
-      songs[index] = { ...songs[index], ...updateData, updatedAt: new Date().toISOString() };
-      this.saveSongs(songs);
+      songs[index] = { ...songs[index], ...updates };
+      store.saveSongs(songs);
       return songs[index];
     }
-    return null;
   },
 
-  // Delete a song
-  deleteSong(id) {
-    const songs = this.getSongs();
-    const filteredSongs = songs.filter(s => s.id !== id);
-    if (filteredSongs.length !== songs.length) {
-      this.saveSongs(filteredSongs);
-      return true;
+  deleteSong: (id) => {
+    const songs = store.getSongs();
+    const filtered = songs.filter(s => s.id !== id);
+    store.saveSongs(filtered);
+  },
+
+  // --- SKILLS ---
+  getSkills: () => {
+    const data = localStorage.getItem(STORAGE_KEY_SKILLS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  saveSkills: (skills) => {
+    localStorage.setItem(STORAGE_KEY_SKILLS, JSON.stringify(skills));
+  },
+
+  getSkill: (id) => {
+    const skills = store.getSkills();
+    return skills.find(s => s.id === id);
+  },
+
+  addSkill: (skill) => {
+    const skills = store.getSkills();
+    const newSkill = {
+      ...skill,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString()
+    };
+    skills.push(newSkill);
+    store.saveSkills(skills);
+    return newSkill;
+  },
+
+  updateSkill: (id, updates) => {
+    const skills = store.getSkills();
+    const index = skills.findIndex(s => s.id === id);
+    if (index !== -1) {
+      skills[index] = { ...skills[index], ...updates };
+      store.saveSkills(skills);
+      return skills[index];
     }
-    return false;
   },
 
-  // Get single song
-  getSong(id) {
-    return this.getSongs().find(s => s.id === id) || null;
+  deleteSkill: (id) => {
+    const skills = store.getSkills();
+    const filtered = skills.filter(s => s.id !== id);
+    store.saveSkills(filtered);
   }
 };

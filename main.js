@@ -1,49 +1,75 @@
 import { store } from './store.js';
 
 // DOM Elements
-const songsGrid = document.getElementById('songs-grid');
-const addSongBtn = document.getElementById('add-song-btn');
-const songModal = document.getElementById('song-modal');
+const itemsGrid = document.getElementById('items-grid');
+const addBtn = document.getElementById('add-btn');
+const itemModal = document.getElementById('item-modal');
 const modalTitle = document.getElementById('modal-title');
-const songForm = document.getElementById('song-form');
+const itemForm = document.getElementById('item-form');
 const cancelBtn = document.getElementById('cancel-btn');
 const searchInput = document.getElementById('search-input');
 const sortSelect = document.getElementById('sort-select');
 
+// Tabs
+const tabBtns = document.querySelectorAll('.tab-btn');
+
 // Form Inputs
-const idInput = document.getElementById('song-id');
+const idInput = document.getElementById('item-id');
 const titleInput = document.getElementById('title');
 const artistInput = document.getElementById('artist');
 const difficultyInput = document.getElementById('difficulty');
 const progressInput = document.getElementById('progress');
 
 // iTunes Search
+const itunesSearchContainer = document.querySelector('.search-container');
 const itunesSearchInput = document.getElementById('itunes-search');
 const itunesResults = document.getElementById('itunes-results');
 let searchTimeout;
 
 // Current State
-let currentSongs = [];
+let activeTab = 'songs'; // 'songs' or 'skills'
+let currentItems = [];
 
 // Initialize Application
 function init() {
-  currentSongs = store.getSongs();
-  renderSongs();
+  loadItemsFromStore();
+  renderItems();
   setupEventListeners();
 }
 
+function loadItemsFromStore() {
+  currentItems = activeTab === 'songs' ? store.getSongs() : store.getSkills();
+}
+
 function setupEventListeners() {
+  // Tabs
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      activeTab = e.target.dataset.tab;
+
+      // Update Add Button & Placeholders
+      addBtn.textContent = activeTab === 'songs' ? '+ Add Song' : '+ Add Skill';
+      searchInput.placeholder = activeTab === 'songs' ? 'Search songs...' : 'Search skills...';
+
+      closeModal();
+      loadItemsFromStore();
+      updateView();
+    });
+  });
+
   // Modal toggle
-  addSongBtn.addEventListener('click', () => openModal());
+  addBtn.addEventListener('click', () => openModal());
   cancelBtn.addEventListener('click', closeModal);
 
   // Close modal on outside click
-  songModal.addEventListener('click', (e) => {
-    if (e.target === songModal) closeModal();
+  itemModal.addEventListener('click', (e) => {
+    if (e.target === itemModal) closeModal();
   });
 
   // Form submit
-  songForm.addEventListener('submit', handleFormSubmit);
+  itemForm.addEventListener('submit', handleFormSubmit);
 
   // Search & Sort
   searchInput.addEventListener('input', updateView);
@@ -101,33 +127,36 @@ function renderItunesResults(results) {
 }
 
 // Render Logic
-function renderSongs() {
-  if (currentSongs.length === 0) {
-    songsGrid.innerHTML = `
+function renderItems() {
+  if (currentItems.length === 0) {
+    const itemName = activeTab === 'songs' ? 'songs' : 'skills';
+    itemsGrid.innerHTML = `
       <div class="empty-state">
-        <p>No songs added yet. Hit the "+ Add Song" button to start tracking your grooves!</p>
+        <p>No ${itemName} added yet. Hit the "+ Add" button to start tracking your grooves!</p>
       </div>
     `;
     return;
   }
 
-  songsGrid.innerHTML = currentSongs.map(song => createSongCard(song)).join('');
+  itemsGrid.innerHTML = currentItems.map(item => createItemCard(item)).join('');
 
   // Attach event listeners to newly created card buttons
   document.querySelectorAll('.edit-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.dataset.id;
-      const song = store.getSong(id);
-      if (song) openModal(song);
+      const item = activeTab === 'songs' ? store.getSong(id) : store.getSkill(id);
+      if (item) openModal(item);
     });
   });
 
   document.querySelectorAll('.delete-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      if (confirm('Are you sure you want to delete this song?')) {
+      if (confirm(`Are you sure you want to delete this ${activeTab === 'songs' ? 'song' : 'skill'}?`)) {
         const id = e.currentTarget.dataset.id;
-        store.deleteSong(id);
-        currentSongs = store.getSongs();
+        if (activeTab === 'songs') store.deleteSong(id);
+        else store.deleteSkill(id);
+
+        loadItemsFromStore();
         updateView();
       }
     });
@@ -147,9 +176,10 @@ function renderSongs() {
       const id = e.target.dataset.id;
       const val = parseInt(e.target.value);
       // Persist on release
-      store.updateSong(id, { progress: val });
-      currentSongs = store.getSongs(); // Refresh state without total re-render
-      // Also update View just to make sure sorting triggers if needed
+      if (activeTab === 'songs') store.updateSong(id, { progress: val });
+      else store.updateSkill(id, { progress: val });
+
+      loadItemsFromStore();
       updateView();
     });
   });
@@ -158,25 +188,24 @@ function renderSongs() {
   document.querySelectorAll('.struggle-item').forEach(item => {
     item.addEventListener('click', (e) => {
       const li = e.currentTarget;
-      const songId = li.dataset.songId;
+      const itemId = li.dataset.itemId;
       const type = li.dataset.type; // 'notes' or 'struggles'
       const index = parseInt(li.dataset.index);
 
-      const song = store.getSong(songId);
+      const itemData = activeTab === 'songs' ? store.getSong(itemId) : store.getSkill(itemId);
       const completionKey = type === 'notes' ? 'completedNotes' : 'completedStruggles';
-      let completed = song[completionKey] || [];
+      let completed = itemData[completionKey] || [];
 
       if (completed.includes(index)) {
-        // Uncheck
         completed = completed.filter(i => i !== index);
         li.classList.remove('completed');
       } else {
-        // Check
         completed.push(index);
         li.classList.add('completed');
       }
 
-      store.updateSong(songId, { [completionKey]: completed });
+      if (activeTab === 'songs') store.updateSong(itemId, { [completionKey]: completed });
+      else store.updateSkill(itemId, { [completionKey]: completed });
     });
   });
 
@@ -201,25 +230,24 @@ function renderSongs() {
   });
 }
 
-function handleInlineAdd(songId, type) {
-  const inputId = type === 'notes' ? `inline-notes-${songId}` : `inline-struggles-${songId}`;
+function handleInlineAdd(itemId, type) {
+  const inputId = type === 'notes' ? `inline-notes-${itemId}` : `inline-struggles-${itemId}`;
   const inputEl = document.getElementById(inputId);
   const newItem = inputEl.value.trim();
   if (!newItem) return;
 
-  const song = store.getSong(songId);
-  const existingList = song[type] ? song[type].split('\\n').filter(s => s.trim() !== '') : [];
+  const itemData = activeTab === 'songs' ? store.getSong(itemId) : store.getSkill(itemId);
+  const existingList = itemData[type] ? itemData[type].split('\n').filter(s => s.trim() !== '') : [];
   existingList.push(newItem);
 
-  store.updateSong(songId, { [type]: existingList.join('\\n') });
+  if (activeTab === 'songs') store.updateSong(itemId, { [type]: existingList.join('\n') });
+  else store.updateSkill(itemId, { [type]: existingList.join('\n') });
 
-  // Refresh state and DOM
-  currentSongs = store.getSongs();
-  renderSongs();
+  loadItemsFromStore();
+  renderItems();
 }
 
-function createSongCard(song) {
-  // Map difficulty to color/emoji
+function createItemCard(item) {
   const difficultyMap = {
     1: '🟢 Beginner',
     2: '🟡 Easy',
@@ -230,16 +258,16 @@ function createSongCard(song) {
 
   // Parse Notes
   let notesHtml = '';
-  const notesList = song.notes ? song.notes.split('\\n').filter(s => s.trim() !== '') : [];
-  const completedNotes = song.completedNotes || [];
+  const notesList = item.notes ? item.notes.split('\n').filter(s => s.trim() !== '') : [];
+  const completedNotes = item.completedNotes || [];
 
   notesHtml = `
     <div class="struggles-preview">
       <strong>Notes:</strong>
-      <ul class="struggles-list" id="notes-list-${song.id}">
+      <ul class="struggles-list" id="notes-list-${item.id}">
         ${notesList.map((note, index) => `
           <li class="struggle-item ${completedNotes.includes(index) ? 'completed' : ''}" 
-              data-song-id="${song.id}" 
+              data-item-id="${item.id}" 
               data-type="notes"
               data-index="${index}">
             <span class="checkbox"></span>
@@ -249,24 +277,24 @@ function createSongCard(song) {
         ${notesList.length === 0 ? '<li class="empty-note">No notes yet. Add one!</li>' : ''}
       </ul>
       <div class="inline-add-struggle">
-        <input type="text" placeholder="Add a new note..." class="inline-struggle-input" id="inline-notes-${song.id}" />
-        <button class="btn secondary-btn inline-add-btn" data-id="${song.id}" data-type="notes">Add</button>
+        <input type="text" placeholder="Add a new note..." class="inline-struggle-input" id="inline-notes-${item.id}" />
+        <button class="btn secondary-btn inline-add-btn" data-id="${item.id}" data-type="notes">Add</button>
       </div>
     </div>
   `;
 
   // Parse Struggles
   let strugglesHtml = '';
-  const strugglesList = song.struggles ? song.struggles.split('\\n').filter(s => s.trim() !== '') : [];
-  const completedStruggles = song.completedStruggles || [];
+  const strugglesList = item.struggles ? item.struggles.split('\n').filter(s => s.trim() !== '') : [];
+  const completedStruggles = item.completedStruggles || [];
 
   strugglesHtml = `
     <div class="struggles-preview">
       <strong>Struggles:</strong>
-      <ul class="struggles-list" id="struggles-list-${song.id}">
+      <ul class="struggles-list" id="struggles-list-${item.id}">
         ${strugglesList.map((struggle, index) => `
           <li class="struggle-item ${completedStruggles.includes(index) ? 'completed' : ''}" 
-              data-song-id="${song.id}" 
+              data-item-id="${item.id}" 
               data-type="struggles"
               data-index="${index}">
             <span class="checkbox"></span>
@@ -276,33 +304,33 @@ function createSongCard(song) {
         ${strugglesList.length === 0 ? '<li class="empty-note">No struggles yet. Add one!</li>' : ''}
       </ul>
       <div class="inline-add-struggle">
-        <input type="text" placeholder="Add a new struggle..." class="inline-struggle-input" id="inline-struggles-${song.id}" />
-        <button class="btn secondary-btn inline-add-btn" data-id="${song.id}" data-type="struggles">Add</button>
+        <input type="text" placeholder="Add a new struggle..." class="inline-struggle-input" id="inline-struggles-${item.id}" />
+        <button class="btn secondary-btn inline-add-btn" data-id="${item.id}" data-type="struggles">Add</button>
       </div>
     </div>
   `;
 
   return `
-    <div class="song-card" data-id="${song.id}">
+    <div class="song-card" data-id="${item.id}">
       <div class="song-header">
         <div>
-          <h3>${escapeHtml(song.title)}</h3>
-          <p class="artist">${escapeHtml(song.artist)}</p>
+          <h3>${escapeHtml(item.title)}</h3>
+          ${item.artist ? `<p class="artist">${escapeHtml(item.artist)}</p>` : ''}
         </div>
         <div class="difficulty-badge">
-          ${difficultyMap[song.difficulty] || song.difficulty}
+          ${difficultyMap[item.difficulty] || item.difficulty}
         </div>
       </div>
 
       <div class="progress-container">
         <div class="progress-header">
-          <span>Mastery (<span id="mastery-val-${song.id}">${song.progress}%</span>)</span>
+          <span>Mastery (<span id="mastery-val-${item.id}">${item.progress}%</span>)</span>
         </div>
         <div class="slider-wrapper">
-          <input type="range" min="0" max="100" value="${song.progress}" 
+          <input type="range" min="0" max="100" value="${item.progress}" 
                  class="mastery-slider" 
-                 data-id="${song.id}" 
-                 style="--progress: ${song.progress}%" />
+                 data-id="${item.id}" 
+                 style="--progress: ${item.progress}%" />
         </div>
       </div>
 
@@ -312,40 +340,64 @@ function createSongCard(song) {
       </div>
 
       <div class="card-actions">
-        <button class="icon-btn edit-btn" data-id="${song.id}" title="Edit">✏️</button>
-        <button class="icon-btn delete delete-btn" data-id="${song.id}" title="Delete">🗑️</button>
+        <button class="icon-btn edit-btn" data-id="${item.id}" title="Edit">✏️</button>
+        <button class="icon-btn delete delete-btn" data-id="${item.id}" title="Delete">🗑️</button>
       </div>
     </div>
   `;
 }
 
 // Modal Logic
-function openModal(song = null) {
-  if (song) {
-    modalTitle.textContent = 'Edit Song';
-    idInput.value = song.id;
-    titleInput.value = song.title;
-    artistInput.value = song.artist;
-    difficultyInput.value = song.difficulty;
-    progressInput.value = song.progress;
-    itunesSearchInput.closest('.search-container').style.display = 'none';
+function openModal(item = null) {
+  const isSong = activeTab === 'songs';
+
+  // Toggle Visibility of Song-specific fields
+  if (isSong) {
+    itunesSearchContainer.style.display = 'block';
+    artistInput.parentElement.style.display = 'block';
+
+    // Set custom placeholders
+    titleInput.readOnly = true;
+    artistInput.readOnly = true;
+    titleInput.placeholder = 'Select from search above...';
+    artistInput.placeholder = 'Select from search above...';
   } else {
-    modalTitle.textContent = 'Add New Song';
-    songForm.reset();
+    // Skills Mode
+    itunesSearchContainer.style.display = 'none';
+    artistInput.parentElement.style.display = 'none';
+
+    // Allow typing directly
+    titleInput.readOnly = false;
+    artistInput.readOnly = false;
+    titleInput.placeholder = 'e.g. Double Kick Paradiddle';
+  }
+
+  if (item) {
+    modalTitle.textContent = isSong ? 'Edit Song' : 'Edit Skill';
+    idInput.value = item.id;
+    titleInput.value = item.title;
+    artistInput.value = item.artist || '';
+    difficultyInput.value = item.difficulty;
+    progressInput.value = item.progress;
+    itunesSearchContainer.style.display = 'none'; // hide search on edit
+    titleInput.readOnly = false; // Allow manual edit of title if they want during update
+    artistInput.readOnly = false; 
+  } else {
+    modalTitle.textContent = isSong ? 'Add New Song' : 'Add New Skill';
+    itemForm.reset();
     idInput.value = '';
     titleInput.value = '';
     artistInput.value = '';
     difficultyInput.value = 3; // default
     progressInput.value = 0; // default
-    itunesSearchInput.closest('.search-container').style.display = 'block';
     itunesResults.classList.add('hidden');
   }
-  songModal.classList.remove('hidden');
+  itemModal.classList.remove('hidden');
 }
 
 function closeModal() {
-  songModal.classList.add('hidden');
-  songForm.reset();
+  itemModal.classList.add('hidden');
+  itemForm.reset();
   itunesResults.classList.add('hidden');
 }
 
@@ -354,20 +406,26 @@ function handleFormSubmit(e) {
 
   const formData = {
     title: titleInput.value.trim(),
-    artist: artistInput.value.trim(),
     difficulty: parseInt(difficultyInput.value),
     progress: parseInt(progressInput.value)
   };
 
-  const id = idInput.value;
-
-  if (id) {
-    store.updateSong(id, formData);
-  } else {
-    store.addSong(formData);
+  if (activeTab === 'songs') {
+    formData.artist = artistInput.value.trim();
   }
 
-  currentSongs = store.getSongs();
+  const id = idInput.value;
+
+  if (activeTab === 'songs') {
+    if (id) store.updateSong(id, formData);
+    else store.addSong(formData);
+  } else {
+    // Skills
+    if (id) store.updateSkill(id, formData);
+    else store.addSkill(formData);
+  }
+
+  loadItemsFromStore();
   updateView();
   closeModal();
 }
@@ -378,10 +436,17 @@ function updateView() {
   const sortMethod = sortSelect.value;
 
   // 1. Filter
-  let filtered = store.getSongs().filter(song =>
-    song.title.toLowerCase().includes(searchTerm) ||
-    song.artist.toLowerCase().includes(searchTerm)
-  );
+  let filtered = [];
+  if (activeTab === 'songs') {
+    filtered = store.getSongs().filter(song =>
+      song.title.toLowerCase().includes(searchTerm) ||
+      song.artist.toLowerCase().includes(searchTerm)
+    );
+  } else {
+    filtered = store.getSkills().filter(skill =>
+      skill.title.toLowerCase().includes(searchTerm)
+    );
+  }
 
   // 2. Sort
   filtered.sort((a, b) => {
@@ -403,8 +468,8 @@ function updateView() {
     }
   });
 
-  currentSongs = filtered;
-  renderSongs();
+  currentItems = filtered;
+  renderItems();
 }
 
 // Utility

@@ -32,13 +32,19 @@
   <div class="bg-orb orb-3"></div>
 
   <div class="app-container">
+    <!-- Header -->
     <header>
       <div class="brand">
         <h1>🥁 DrumStory</h1>
         <p>Drum Mastery Tracker</p>
       </div>
-      <button id="add-song-btn" class="btn primary-btn">+ Add Song</button>
+      <button id="add-btn" class="btn primary-btn">+ Add Song</button>
     </header>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="songs">Songs</button>
+      <button class="tab-btn" data-tab="skills">Skills</button>
+    </div>
 
     <div class="controls">
       <div class="search-wrapper">
@@ -58,21 +64,18 @@
     </div>
 
     <main>
-      <div id="songs-grid" class="songs-grid">
-        <!-- Song cards will be injected here via JS -->
-        <div class="empty-state">
-          <p>No songs added yet. Hit the "+ Add Song" button to start tracking your grooves!</p>
-        </div>
+      <div id="items-grid" class="songs-grid">
+        <!-- Cards will be injected here via JS -->
       </div>
     </main>
   </div>
 
   <!-- Add/Edit Modal Overlay -->
-  <div class="modal-overlay hidden" id="song-modal">
+  <div class="modal-overlay hidden" id="item-modal">
     <div class="modal-content glass-panel">
       <h2 id="modal-title">Add New Song</h2>
-      <form id="song-form">
-        <input type="hidden" id="song-id" />
+      <form id="item-form">
+        <input type="hidden" id="item-id" />
 
         <div class="form-group search-container">
           <label for="itunes-search">Search for a Song</label>
@@ -87,7 +90,7 @@
 
         <div class="form-group">
           <label for="artist">Artist/Band</label>
-          <input type="text" id="artist" required placeholder="Select from search above..." readonly />
+          <input type="text" id="artist" placeholder="Select from search above..." readonly />
         </div>
 
         <div class="form-group row">
