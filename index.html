@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drum Progress Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+  <!-- Background Elements for Glassmorphism Context -->
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="bg-orb orb-3"></div>
+
+  <div class="app-container">
+    <header>
+      <div class="brand">
+        <h1>🥁 Drumofir</h1>
+        <p>Drum Mastery Tracker</p>
+      </div>
+      <button id="add-song-btn" class="btn primary-btn">+ Add Song</button>
+    </header>
+
+    <div class="controls">
+      <div class="search-wrapper">
+        <input type="text" id="search-input" placeholder="Search songs..." />
+      </div>
+      <div class="sort-wrapper">
+        <label for="sort-select">Sort By:</label>
+        <select id="sort-select">
+          <option value="recent">Recently Added</option>
+          <option value="progress-desc">Highest Progress</option>
+          <option value="progress-asc">Lowest Progress</option>
+          <option value="difficulty-desc">Highest Difficulty</option>
+          <option value="difficulty-asc">Lowest Difficulty</option>
+          <option value="title">Title (A-Z)</option>
+        </select>
+      </div>
+    </div>
+
+    <main>
+      <div id="songs-grid" class="songs-grid">
+        <!-- Song cards will be injected here via JS -->
+        <div class="empty-state">
+          <p>No songs added yet. Hit the "+ Add Song" button to start tracking your grooves!</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Add/Edit Modal Overlay -->
+  <div class="modal-overlay hidden" id="song-modal">
+    <div class="modal-content glass-panel">
+      <h2 id="modal-title">Add New Song</h2>
+      <form id="song-form">
+        <input type="hidden" id="song-id" />
+
+        <div class="form-group">
+          <label for="title">Song Title</label>
+          <input type="text" id="title" required placeholder="e.g. Tom Sawyer" />
+        </div>
+
+        <div class="form-group">
+          <label for="artist">Artist/Band</label>
+          <input type="text" id="artist" required placeholder="e.g. Rush" />
+        </div>
+
+        <div class="form-group row">
+          <div class="col">
+            <label for="difficulty">Difficulty (1-5)</label>
+            <input type="number" id="difficulty" min="1" max="5" value="3" required />
+          </div>
+          <div class="col">
+            <label for="progress">Progress (%)</label>
+            <input type="number" id="progress" min="0" max="100" value="0" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="struggles">Current Struggles / Notes</label>
+          <textarea id="struggles" rows="3"
+            placeholder="e.g. Struggling with the 7/8 time signature transition..."></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn secondary-btn" id="cancel-btn">Cancel</button>
+          <button type="submit" class="btn primary-btn" id="save-btn">Save Song</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+
+</html>
