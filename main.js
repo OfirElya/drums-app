@@ -7,6 +7,7 @@ const itemModal = document.getElementById('item-modal');
 const modalTitle = document.getElementById('modal-title');
 const itemForm = document.getElementById('item-form');
 const cancelBtn = document.getElementById('cancel-btn');
+const saveBtn = document.getElementById('save-btn');
 const searchInput = document.getElementById('search-input');
 const sortSelect = document.getElementById('sort-select');
 
@@ -361,6 +362,7 @@ function openModal(item = null) {
     artistInput.readOnly = true;
     titleInput.placeholder = 'Select from search above...';
     artistInput.placeholder = 'Select from search above...';
+    saveBtn.textContent = item ? 'Save Song' : 'Save Song'; // Even updating it says save song, but I'll make it generic 
   } else {
     // Skills Mode
     itunesSearchContainer.style.display = 'none';
@@ -370,10 +372,12 @@ function openModal(item = null) {
     titleInput.readOnly = false;
     artistInput.readOnly = false;
     titleInput.placeholder = 'e.g. Double Kick Paradiddle';
+    saveBtn.textContent = 'Save Skill';
   }
 
   if (item) {
     modalTitle.textContent = isSong ? 'Edit Song' : 'Edit Skill';
+    saveBtn.textContent = isSong ? 'Update Song' : 'Update Skill';
     idInput.value = item.id;
     titleInput.value = item.title;
     artistInput.value = item.artist || '';
@@ -384,6 +388,7 @@ function openModal(item = null) {
     artistInput.readOnly = false; 
   } else {
     modalTitle.textContent = isSong ? 'Add New Song' : 'Add New Skill';
+    saveBtn.textContent = isSong ? 'Save Song' : 'Save Skill';
     itemForm.reset();
     idInput.value = '';
     titleInput.value = '';
