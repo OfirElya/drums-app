@@ -1,6 +1,6 @@
 import { store } from './store.js';
 import { auth, provider } from './firebase.js';
-import { signInWithRedirect, signOut, onAuthStateChanged } from 'firebase/auth';
+import { signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // DOM Elements
 const loginOverlay = document.getElementById('login-overlay');
@@ -60,9 +60,11 @@ onAuthStateChanged(auth, async (user) => {
 
 loginBtn.addEventListener('click', async () => {
   try {
+    loginBtn.textContent = 'Redirecting...';
     await signInWithRedirect(auth, provider);
   } catch (error) {
     console.error("Login failed", error);
+    loginBtn.textContent = 'Login with Google';
     alert("Failed to login with Google: " + error.message);
   }
 });
@@ -520,6 +522,11 @@ function escapeHtml(unsafe) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+getRedirectResult(auth).catch((error) => {
+  console.error("Redirect Auth Error:", error);
+  alert("Auth Error: " + error.message);
+});
 
 // Boot event listeners (actual data fetch waits for auth)
 setupEventListeners();
