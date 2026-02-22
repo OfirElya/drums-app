@@ -596,13 +596,18 @@ textarea:focus {
       width: 100%;
     }
   .controls {
-    flex-direction: column;
-    gap: 1rem;
+    flex-direction: row;
+      gap: 0.5rem;
+      padding: 0.5rem;
   }
 
-  .search-wrapper,
+    .search-wrapper {
+      flex: 1;
+      width: auto;
+    }
   .sort-wrapper {
-    width: 100%;
+    width: auto;
+      flex-shrink: 0;
   }
 
   /* Make grid tighter on small screens */

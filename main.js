@@ -275,7 +275,6 @@ function createItemCard(item) {
             <span class="text">${escapeHtml(note)}</span>
           </li>
         `).join('')}
-        ${notesList.length === 0 ? '<li class="empty-note">No notes yet. Add one!</li>' : ''}
       </ul>
       <div class="inline-add-struggle">
         <input type="text" placeholder="Add a new note..." class="inline-struggle-input" id="inline-notes-${item.id}" />
@@ -302,7 +301,6 @@ function createItemCard(item) {
             <span class="text">${escapeHtml(struggle)}</span>
           </li>
         `).join('')}
-        ${strugglesList.length === 0 ? '<li class="empty-note">No struggles yet. Add one!</li>' : ''}
       </ul>
       <div class="inline-add-struggle">
         <input type="text" placeholder="Add a new struggle..." class="inline-struggle-input" id="inline-struggles-${item.id}" />
