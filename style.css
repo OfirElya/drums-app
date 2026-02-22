@@ -182,6 +182,9 @@ header {
   background: rgba(255, 255, 255, 0.08);
 }
 
+.hidden {
+  display: none !important;
+}
 /* Controls (Sort & Search) */
 .controls {
   display: flex;

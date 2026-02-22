@@ -1,11 +1,12 @@
 import { store } from './store.js';
 import { auth, provider } from './firebase.js';
-import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { signInWithRedirect, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // DOM Elements
 const loginOverlay = document.getElementById('login-overlay');
 const loginBtn = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
+const appContent = document.getElementById('app-content');
 
 const itemsGrid = document.getElementById('items-grid');
 const addBtn = document.getElementById('add-btn');
@@ -42,11 +43,13 @@ let currentItems = []; // The visually filtered/sorted array
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     loginOverlay.classList.add('hidden');
+    appContent.classList.remove('hidden');
     logoutBtn.classList.remove('hidden');
     store.setUserId(user.uid);
     await fetchData();
   } else {
     loginOverlay.classList.remove('hidden');
+    appContent.classList.add('hidden');
     logoutBtn.classList.add('hidden');
     store.setUserId(null);
     activeData = [];
@@ -57,7 +60,7 @@ onAuthStateChanged(auth, async (user) => {
 
 loginBtn.addEventListener('click', async () => {
   try {
-    await signInWithPopup(auth, provider);
+    await signInWithRedirect(auth, provider);
   } catch (error) {
     console.error("Login failed", error);
     alert("Failed to login with Google.");
