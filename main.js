@@ -16,7 +16,11 @@ const titleInput = document.getElementById('title');
 const artistInput = document.getElementById('artist');
 const difficultyInput = document.getElementById('difficulty');
 const progressInput = document.getElementById('progress');
-const strugglesInput = document.getElementById('struggles');
+
+// iTunes Search
+const itunesSearchInput = document.getElementById('itunes-search');
+const itunesResults = document.getElementById('itunes-results');
+let searchTimeout;
 
 // Current State
 let currentSongs = [];
@@ -44,6 +48,56 @@ function setupEventListeners() {
   // Search & Sort
   searchInput.addEventListener('input', updateView);
   sortSelect.addEventListener('change', updateView);
+
+  // iTunes Search
+  itunesSearchInput.addEventListener('input', handleItunesSearch);
+  document.addEventListener('click', (e) => {
+    if (!itunesSearchInput.contains(e.target) && !itunesResults.contains(e.target)) {
+      itunesResults.classList.add('hidden');
+    }
+  });
+}
+
+async function handleItunesSearch(e) {
+  const query = e.target.value.trim();
+  if (query.length < 2) {
+    itunesResults.classList.add('hidden');
+    return;
+  }
+
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(async () => {
+    try {
+      const res = await fetch(`https://itunes.apple.com/search?entity=song&term=${encodeURIComponent(query)}&limit=5`);
+      const data = await res.json();
+      renderItunesResults(data.results);
+    } catch (err) {
+      console.error('iTunes API error:', err);
+    }
+  }, 300);
+}
+
+function renderItunesResults(results) {
+  if (results.length === 0) {
+    itunesResults.innerHTML = '<li class="empty-note">No results found</li>';
+  } else {
+    itunesResults.innerHTML = results.map(song => `
+      <li data-title="${escapeHtml(song.trackName)}" data-artist="${escapeHtml(song.artistName)}">
+        <strong>${escapeHtml(song.trackName)}</strong> <br/>
+        <span style="font-size: 0.75rem; color: var(--text-secondary)">${escapeHtml(song.artistName)}</span>
+      </li>
+    `).join('');
+
+    itunesResults.querySelectorAll('li[data-title]').forEach(li => {
+      li.addEventListener('click', (e) => {
+        titleInput.value = e.currentTarget.dataset.title;
+        artistInput.value = e.currentTarget.dataset.artist;
+        itunesSearchInput.value = `${e.currentTarget.dataset.title} - ${e.currentTarget.dataset.artist}`;
+        itunesResults.classList.add('hidden');
+      });
+    });
+  }
+  itunesResults.classList.remove('hidden');
 }
 
 // Render Logic
@@ -100,58 +154,64 @@ function renderSongs() {
     });
   });
 
-  // Struggle Checkbox events
+  // Note/Struggle Checkbox events
   document.querySelectorAll('.struggle-item').forEach(item => {
     item.addEventListener('click', (e) => {
       const li = e.currentTarget;
       const songId = li.dataset.songId;
-      const struggleIndex = parseInt(li.dataset.index);
+      const type = li.dataset.type; // 'notes' or 'struggles'
+      const index = parseInt(li.dataset.index);
 
       const song = store.getSong(songId);
-      let completed = song.completedStruggles || [];
+      const completionKey = type === 'notes' ? 'completedNotes' : 'completedStruggles';
+      let completed = song[completionKey] || [];
 
-      if (completed.includes(struggleIndex)) {
+      if (completed.includes(index)) {
         // Uncheck
-        completed = completed.filter(i => i !== struggleIndex);
+        completed = completed.filter(i => i !== index);
         li.classList.remove('completed');
       } else {
         // Check
-        completed.push(struggleIndex);
+        completed.push(index);
         li.classList.add('completed');
       }
 
-      store.updateSong(songId, { completedStruggles: completed });
+      store.updateSong(songId, { [completionKey]: completed });
     });
   });
 
-  // Inline Add Struggle events
+  // Inline Add events
   document.querySelectorAll('.inline-add-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.dataset.id;
-      handleInlineAdd(id);
+      const type = e.currentTarget.dataset.type;
+      handleInlineAdd(id, type);
     });
   });
 
   document.querySelectorAll('.inline-struggle-input').forEach(input => {
     input.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
-        const id = e.currentTarget.id.replace('inline-input-', '');
-        handleInlineAdd(id);
+        const idStr = e.currentTarget.id; // inline-notes-123 or inline-struggles-123
+        const isNotes = idStr.includes('inline-notes-');
+        const id = idStr.replace(isNotes ? 'inline-notes-' : 'inline-struggles-', '');
+        handleInlineAdd(id, isNotes ? 'notes' : 'struggles');
       }
     });
   });
 }
 
-function handleInlineAdd(songId) {
-  const inputEl = document.getElementById(`inline-input-${songId}`);
-  const newStruggle = inputEl.value.trim();
-  if (!newStruggle) return;
+function handleInlineAdd(songId, type) {
+  const inputId = type === 'notes' ? `inline-notes-${songId}` : `inline-struggles-${songId}`;
+  const inputEl = document.getElementById(inputId);
+  const newItem = inputEl.value.trim();
+  if (!newItem) return;
 
   const song = store.getSong(songId);
-  const existingStruggles = song.struggles ? song.struggles.split('\\n').filter(s => s.trim() !== '') : [];
-  existingStruggles.push(newStruggle);
+  const existingList = song[type] ? song[type].split('\\n').filter(s => s.trim() !== '') : [];
+  existingList.push(newItem);
 
-  store.updateSong(songId, { struggles: existingStruggles.join('\\n') });
+  store.updateSong(songId, { [type]: existingList.join('\\n') });
 
   // Refresh state and DOM
   currentSongs = store.getSongs();
@@ -168,29 +228,56 @@ function createSongCard(song) {
     5: '🔥 Extreme'
   };
 
-  // Parse struggles into checkable list
+  // Parse Notes
+  let notesHtml = '';
+  const notesList = song.notes ? song.notes.split('\\n').filter(s => s.trim() !== '') : [];
+  const completedNotes = song.completedNotes || [];
+
+  notesHtml = `
+    <div class="struggles-preview">
+      <strong>Notes:</strong>
+      <ul class="struggles-list" id="notes-list-${song.id}">
+        ${notesList.map((note, index) => `
+          <li class="struggle-item ${completedNotes.includes(index) ? 'completed' : ''}" 
+              data-song-id="${song.id}" 
+              data-type="notes"
+              data-index="${index}">
+            <span class="checkbox"></span>
+            <span class="text">${escapeHtml(note)}</span>
+          </li>
+        `).join('')}
+        ${notesList.length === 0 ? '<li class="empty-note">No notes yet. Add one!</li>' : ''}
+      </ul>
+      <div class="inline-add-struggle">
+        <input type="text" placeholder="Add a new note..." class="inline-struggle-input" id="inline-notes-${song.id}" />
+        <button class="btn secondary-btn inline-add-btn" data-id="${song.id}" data-type="notes">Add</button>
+      </div>
+    </div>
+  `;
+
+  // Parse Struggles
   let strugglesHtml = '';
-  // Support legacy "string" or new object-based struggles
   const strugglesList = song.struggles ? song.struggles.split('\\n').filter(s => s.trim() !== '') : [];
-  const completed = song.completedStruggles || [];
+  const completedStruggles = song.completedStruggles || [];
 
   strugglesHtml = `
     <div class="struggles-preview">
-      <strong>Notes/Struggles:</strong>
-      <ul class="struggles-list" id="list-${song.id}">
+      <strong>Struggles:</strong>
+      <ul class="struggles-list" id="struggles-list-${song.id}">
         ${strugglesList.map((struggle, index) => `
-          <li class="struggle-item ${completed.includes(index) ? 'completed' : ''}" 
+          <li class="struggle-item ${completedStruggles.includes(index) ? 'completed' : ''}" 
               data-song-id="${song.id}" 
+              data-type="struggles"
               data-index="${index}">
             <span class="checkbox"></span>
             <span class="text">${escapeHtml(struggle)}</span>
           </li>
         `).join('')}
-        ${strugglesList.length === 0 ? '<li class="empty-note">No notes yet. Add one below!</li>' : ''}
+        ${strugglesList.length === 0 ? '<li class="empty-note">No struggles yet. Add one!</li>' : ''}
       </ul>
       <div class="inline-add-struggle">
-        <input type="text" placeholder="Add a new note..." class="inline-struggle-input" id="inline-input-${song.id}" />
-        <button class="btn secondary-btn inline-add-btn" data-id="${song.id}">Add</button>
+        <input type="text" placeholder="Add a new struggle..." class="inline-struggle-input" id="inline-struggles-${song.id}" />
+        <button class="btn secondary-btn inline-add-btn" data-id="${song.id}" data-type="struggles">Add</button>
       </div>
     </div>
   `;
@@ -219,7 +306,10 @@ function createSongCard(song) {
         </div>
       </div>
 
-      ${strugglesHtml}
+      <div class="lists-container" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+        ${notesHtml}
+        ${strugglesHtml}
+      </div>
 
       <div class="card-actions">
         <button class="icon-btn edit-btn" data-id="${song.id}" title="Edit">✏️</button>
@@ -238,13 +328,17 @@ function openModal(song = null) {
     artistInput.value = song.artist;
     difficultyInput.value = song.difficulty;
     progressInput.value = song.progress;
-    strugglesInput.value = song.struggles || '';
+    itunesSearchInput.closest('.search-container').style.display = 'none';
   } else {
     modalTitle.textContent = 'Add New Song';
     songForm.reset();
     idInput.value = '';
+    titleInput.value = '';
+    artistInput.value = '';
     difficultyInput.value = 3; // default
     progressInput.value = 0; // default
+    itunesSearchInput.closest('.search-container').style.display = 'block';
+    itunesResults.classList.add('hidden');
   }
   songModal.classList.remove('hidden');
 }
@@ -252,6 +346,7 @@ function openModal(song = null) {
 function closeModal() {
   songModal.classList.add('hidden');
   songForm.reset();
+  itunesResults.classList.add('hidden');
 }
 
 function handleFormSubmit(e) {
@@ -261,8 +356,7 @@ function handleFormSubmit(e) {
     title: titleInput.value.trim(),
     artist: artistInput.value.trim(),
     difficulty: parseInt(difficultyInput.value),
-    progress: parseInt(progressInput.value),
-    struggles: strugglesInput.value.trim()
+    progress: parseInt(progressInput.value)
   };
 
   const id = idInput.value;

@@ -1,11 +1,11 @@
 :root {
   /* Dark Premium Palette */
-  --bg-color: #0a0a0f;
+  --bg-color: #050505;
   --text-primary: #ffffff;
-  --text-secondary: #9ca3af;
-  --accent-primary: #9b5de5;
-  --accent-secondary: #00f5d4;
-  --accent-hover: #b47ae5;
+  --text-secondary: #a3b1a8;
+    --accent-primary: #00e676;
+    --accent-secondary: #00bfa5;
+    --accent-hover: #1de9b6;
   --glass-bg: rgba(255, 255, 255, 0.03);
   --glass-border: rgba(255, 255, 255, 0.1);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
@@ -58,7 +58,7 @@ body {
 .orb-3 {
   width: 250px;
   height: 250px;
-  background: #f15bb5;
+  background: #05664d;
   top: 40%;
   left: 30%;
   opacity: 0.2;
@@ -549,6 +549,9 @@ textarea:focus {
     gap: 1rem;
   }
 
+    #add-song-btn {
+      width: 100%;
+    }
   .controls {
     flex-direction: column;
     gap: 1rem;
@@ -567,4 +570,48 @@ textarea:focus {
   .form-group.row {
     flex-direction: column;
   }
+.modal-actions {
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modal-actions .btn {
+  width: 100%;
+}
+}
+
+/* Autocomplete CSS */
+.search-container {
+  position: relative;
+}
+
+.autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #111;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  z-index: 50;
+  list-style: none;
+  margin-top: 4px;
+}
+
+.autocomplete-list li {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.85rem;
+}
+
+.autocomplete-list li:hover {
+  background: var(--accent-primary);
+  color: #000;
+}
+
+.autocomplete-list.hidden {
+  display: none;
 }

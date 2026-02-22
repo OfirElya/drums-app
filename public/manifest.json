@@ -1,10 +1,10 @@
 {
-  "name": "Drumofir Tracker",
-  "short_name": "Drumofir",
+  "name": "DrumStory Tracker",
+  "short_name": "DrumStory",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0f",
-  "theme_color": "#9b5de5",
+  "theme_color": "#00e676",
   "icons": [
     {
       "src": "/icon-192.png",

@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Drumofir Tracker</title>
+  <title>DrumStory Tracker</title>
   <!-- PWA Setup -->
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#0a0a0f" />
@@ -35,7 +34,7 @@
   <div class="app-container">
     <header>
       <div class="brand">
-        <h1>🥁 Drumofir</h1>
+        <h1>🥁 DrumStory</h1>
         <p>Drum Mastery Tracker</p>
       </div>
       <button id="add-song-btn" class="btn primary-btn">+ Add Song</button>
@@ -75,14 +74,20 @@
       <form id="song-form">
         <input type="hidden" id="song-id" />
 
+        <div class="form-group search-container">
+          <label for="itunes-search">Search for a Song</label>
+          <input type="text" id="itunes-search" placeholder="Type a song name..." autocomplete="off" />
+          <ul id="itunes-results" class="autocomplete-list hidden"></ul>
+        </div>
+
         <div class="form-group">
           <label for="title">Song Title</label>
-          <input type="text" id="title" required placeholder="e.g. Tom Sawyer" />
+          <input type="text" id="title" required placeholder="Select from search above..." readonly />
         </div>
 
         <div class="form-group">
           <label for="artist">Artist/Band</label>
-          <input type="text" id="artist" required placeholder="e.g. Rush" />
+          <input type="text" id="artist" required placeholder="Select from search above..." readonly />
         </div>
 
         <div class="form-group row">
@@ -94,12 +99,6 @@
             <label for="progress">Progress (%)</label>
             <input type="number" id="progress" min="0" max="100" value="0" required />
           </div>
-        </div>
-
-        <div class="form-group">
-          <label for="struggles">Current Struggles / Notes</label>
-          <textarea id="struggles" rows="3"
-            placeholder="e.g. Struggling with the 7/8 time signature transition..."></textarea>
         </div>
 
         <div class="modal-actions">
