@@ -1,0 +1,7 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Remove package-lock to avoid Vercel mac/linux native dependency conflicts with Rollup
+package-lock.json
