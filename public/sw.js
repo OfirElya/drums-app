@@ -1,4 +1,4 @@
-const CACHE_NAME = 'drumofir-cache-v1';
+const CACHE_NAME = 'drumstory-cache-v2';
 const urlsToCache = [
   '/',
   '/index.html',
