@@ -63,7 +63,7 @@ loginBtn.addEventListener('click', async () => {
     await signInWithRedirect(auth, provider);
   } catch (error) {
     console.error("Login failed", error);
-    alert("Failed to login with Google.");
+    alert("Failed to login with Google: " + error.message);
   }
 });
 

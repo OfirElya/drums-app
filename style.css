@@ -666,3 +666,27 @@ textarea:focus {
 .autocomplete-list.hidden {
   display: none;
 }
+/* Login Overlay */
+.login-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-color);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-overlay.hidden {
+  display: none !important;
+}
+
+.login-content {
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  padding: 2.5rem;
+}
